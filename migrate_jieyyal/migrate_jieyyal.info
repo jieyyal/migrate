@@ -1,0 +1,14 @@
+name = "Migrate from Jieyyal"
+description = "Module to migrate my old site content to Drupal 7"
+package = "Migration"
+core = 7.x
+dependencies[] = migrate
+dependencies[] = migrate_extras
+dependencies[] = metatag
+dependencies[] = field_ui
+dependencies[] = entity_translation
+dependencies[] = entity_translation_export_import
+
+#  include the files that contain your Migrate classes 
+files[] = migrate_jieyyal.migrate.inc
+files[] = jieyyal.inc
