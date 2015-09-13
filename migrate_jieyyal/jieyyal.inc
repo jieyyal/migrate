@@ -33,6 +33,8 @@ class JieyyalMigration extends Migration {
     $this->addFieldMapping('metatag_description', 'meta_description');
     $this->addFieldMapping('metatag_keywords', 'meta_keywords');
     $this->addFieldMapping('language', 'language');
+//    $this->addFieldMapping('path', 'url');
+//    $this->addFieldMapping('pathauto', 'pathauto');
   }
   public function prepareRow($row) {
     if (parent::prepareRow($row) === FALSE) {
@@ -45,10 +47,44 @@ class JieyyalMigration extends Migration {
     $row->body = array($row->body_en, $row->body_zh);
     $row->body_language = array('en', 'zh-hans');
     $row->body_format = 'full_html';
-    
+
     return TRUE;
   }
-  function complete($entity, stdClass $row) {
+  public function complete($entity, stdClass $row) {
+
+    $url_alias_results_en = db_select('url_alias', 'ua')
+        ->condition('source', 'node/' . $entity->nid)
+        ->condition('language', 'en')
+        ->fields('ua')
+        ->execute();
+    $url_alias_results_zh = db_select('url_alias', 'ua')
+        ->condition('source', 'node/' . $entity->nid)
+        ->condition('language', 'zh-hans')
+        ->fields('ua')
+        ->execute();
+    if ($url_alias_results_en->rowCount() == 1 && $url_alias_results_zh->rowCount() == 0) {
+      //if path is the same for both languages then adding back the english path
+      db_insert('url_alias')
+        ->fields(array(
+          'source' =>'node/' . $entity->nid,
+          'alias' => $row->url,
+          'language' => 'zh-hans',
+        ))
+        ->execute();
+    }
+    elseif ($url_alias_results_en->rowCount() == 1 && $url_alias_results_zh->rowCount() == 1) {
+      db_update('url_alias')
+        ->fields(array(
+          'alias' => $row->url,
+        ))
+        ->condition('source', 'node/' . $entity->nid)
+        ->condition('language', 'zh-hans')
+        ->execute();
+    }
+    else {
+      // Something must be wrong.
+      return FALSE;
+    }
 
     // Add a translation into the system only if it exists.
     if (!is_null($entity->title_field['zh-hans'][0]['value'])) {
@@ -59,7 +95,7 @@ class JieyyalMigration extends Migration {
                       'entity_type' => 'node',
                       'entity_id' => $entity->nid,
                       'language' => 'zh-hans',
-                      'source' => $entity->language,
+                      'source' => 'en',
                       'uid' => $entity->uid,
                       'status' => $entity->status,
                       'translate' => $entity->translate,
